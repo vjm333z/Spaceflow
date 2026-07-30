@@ -1,0 +1,28 @@
+# 로컬 개발용 인프라 — Postgres(주 DB) + Redis(캐시/분산락)
+# 실행: docker compose up -d
+services:
+  postgres:
+    image: postgres:16
+    container_name: spaceflow-postgres
+    environment:
+      POSTGRES_DB: spaceflow
+      POSTGRES_USER: spaceflow
+      POSTGRES_PASSWORD: spaceflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - spaceflow-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U spaceflow"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  redis:
+    image: redis:7
+    container_name: spaceflow-redis
+    ports:
+      - "6379:6379"
+
+volumes:
+  spaceflow-pgdata:

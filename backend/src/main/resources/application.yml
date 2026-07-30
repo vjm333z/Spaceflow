@@ -1,0 +1,37 @@
+spring:
+  application:
+    name: spaceflow
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/spaceflow
+    username: spaceflow
+    password: spaceflow
+
+  jpa:
+    hibernate:
+      # Flyway가 스키마를 관리하므로 JPA는 생성/변경하지 않고 검증만 한다.
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: true
+    # OSIV 끄기: 뷰 렌더링까지 DB 커넥션을 물고 있지 않도록 (커넥션 고갈 방지)
+    open-in-view: false
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+
+# 운영 관측용 엔드포인트 (헬스체크/메트릭)
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, metrics, prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+
+logging:
+  level:
+    # 개발 중 실행되는 SQL을 로그로 확인
+    org.hibernate.SQL: debug
