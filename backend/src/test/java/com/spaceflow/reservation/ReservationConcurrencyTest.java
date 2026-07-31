@@ -18,10 +18,10 @@ import java.util.function.Consumer;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * 동시성 비교 테스트.
- * 스레드 여러 개가 "같은 방·같은 시간"을 동시에 예약하도록 만들어, 방어 방식별 결과를 확인한다.
- * - 순진한 버전(check-then-act): 중복이 생긴다
- * - 비관적 락: 딱 1건만 성공한다
+ * 동시성 방어 검증.
+ * 같은 방·같은 시간을 동시에 예약하면 어떤 방식이든 CONFIRMED가 딱 1건이어야 한다.
+ * (순진한 버전이 중복 10건을 만들던 "before"는 git 히스토리 커밋 ddc90f9에 남아있다.
+ *  이제 EXCLUDE 제약이 DB 차원에서 막으므로 운영 방식조차 중복이 생기지 않는다.)
  */
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)
@@ -36,41 +36,49 @@ class ReservationConcurrencyTest {
 
     @BeforeEach
     void clean() {
-        reservationRepository.deleteAll(); // 테스트 간 격리
+        reservationRepository.deleteAll();
+    }
+
+    // --- 같은 시간에 20개 동시 예약 → 어떤 방식이든 1건만 성공해야 한다 ---
+
+    @Test
+    void 운영방식_앱확인_더하기_EXCLUDE제약이면_1건만_성공한다() throws InterruptedException {
+        assertThat(fireSameSlot(reservationService::reserve)).isEqualTo(1);
     }
 
     @Test
-    void 순진한_버전은_동시예약시_중복이_생긴다() throws InterruptedException {
-        long confirmed = fireConcurrently(reservationService::reserve);
-        // 방어가 없어 중복 발생 (정상이라면 1이어야 함)
-        assertThat(confirmed).isGreaterThan(1);
+    void 비관적_락도_1건만_성공한다() throws InterruptedException {
+        assertThat(fireSameSlot(reservationService::reserveWithPessimisticLock)).isEqualTo(1);
     }
 
     @Test
-    void 비관적_락_버전은_동시예약해도_1건만_성공한다() throws InterruptedException {
-        long confirmed = fireConcurrently(reservationService::reserveWithPessimisticLock);
-        assertThat(confirmed).isEqualTo(1);
+    void 낙관적_락도_1건만_성공한다() throws InterruptedException {
+        assertThat(fireSameSlot(reservationService::reserveWithOptimisticLock)).isEqualTo(1);
     }
+
+    // --- EXCLUDE의 강점: 겹치지 않는 예약은 동시에 모두 성공한다 (락과 달리 직렬화 안 됨) ---
 
     @Test
-    void 낙관적_락_버전은_동시예약해도_1건만_성공한다() throws InterruptedException {
-        long confirmed = fireConcurrently(reservationService::reserveWithOptimisticLock);
-        assertThat(confirmed).isEqualTo(1);
+    void 겹치지_않는_예약은_동시에_모두_성공한다() throws InterruptedException {
+        int n = 10;
+        AtomicInteger success = fireDifferentSlots(n);
+        long confirmed = countConfirmed();
+        System.out.printf("[동시성-비겹침] 성공저장=%d, DB의 CONFIRMED=%d%n", success.get(), confirmed);
+        assertThat(confirmed).isEqualTo(n);
     }
 
-    /**
-     * 스레드 20개가 같은 방·같은 시간을 동시에 예약하도록 발사하고,
-     * 최종적으로 DB에 남은 CONFIRMED 예약 수를 돌려준다.
-     */
-    private long fireConcurrently(Consumer<CreateReservationRequest> reserveFn) throws InterruptedException {
+    // ---- helpers ----
+
+    /** 스레드 20개가 같은 방·같은 시간을 동시에 예약. 최종 CONFIRMED 수를 반환. */
+    private long fireSameSlot(Consumer<CreateReservationRequest> reserveFn) throws InterruptedException {
         int threadCount = 20;
         OffsetDateTime start = OffsetDateTime.parse("2026-09-01T10:00:00+09:00");
         OffsetDateTime end = OffsetDateTime.parse("2026-09-01T12:00:00+09:00");
         CreateReservationRequest req = new CreateReservationRequest(ROOM_ID, start, end, "동시성테스터", null);
 
         ExecutorService pool = Executors.newFixedThreadPool(threadCount);
-        CountDownLatch ready = new CountDownLatch(threadCount); // 전원 준비됐는지
-        CountDownLatch startGate = new CountDownLatch(1);        // "출발!" 신호
+        CountDownLatch ready = new CountDownLatch(threadCount);
+        CountDownLatch startGate = new CountDownLatch(1);
         AtomicInteger success = new AtomicInteger();
         AtomicInteger conflict = new AtomicInteger();
 
@@ -78,28 +86,59 @@ class ReservationConcurrencyTest {
             pool.submit(() -> {
                 ready.countDown();
                 try {
-                    startGate.await();          // 전원 대기하다 동시에 출발
+                    startGate.await();
                     reserveFn.accept(req);
                     success.incrementAndGet();
                 } catch (IllegalStateException e) {
-                    conflict.incrementAndGet(); // "이미 예약된 시간대"로 거부됨
+                    conflict.incrementAndGet();
                 } catch (Exception ignored) {
-                    // DB 제약 위반 등 기타
                 }
             });
         }
-
         ready.await();
-        startGate.countDown();  // 동시에 출발
+        startGate.countDown();
         pool.shutdown();
         pool.awaitTermination(30, TimeUnit.SECONDS);
 
-        long confirmed = reservationRepository.findByRoomIdOrderByStartAtAsc(ROOM_ID).stream()
-                .filter(r -> r.getStatus() == ReservationStatus.CONFIRMED)
-                .count();
-
-        System.out.printf("[동시성] 성공저장=%d, 충돌거부=%d, DB의 CONFIRMED=%d%n",
+        long confirmed = countConfirmed();
+        System.out.printf("[동시성-같은슬롯] 성공저장=%d, 충돌거부=%d, DB의 CONFIRMED=%d%n",
                 success.get(), conflict.get(), confirmed);
         return confirmed;
+    }
+
+    /** 스레드 n개가 서로 다른 시간(안 겹침)을 동시에 예약. 성공 수를 반환. */
+    private AtomicInteger fireDifferentSlots(int n) throws InterruptedException {
+        ExecutorService pool = Executors.newFixedThreadPool(n);
+        CountDownLatch ready = new CountDownLatch(n);
+        CountDownLatch startGate = new CountDownLatch(1);
+        AtomicInteger success = new AtomicInteger();
+
+        for (int i = 0; i < n; i++) {
+            final int hour = 8 + i; // 08~09, 09~10, ... 서로 겹치지 않는 1시간 슬롯
+            pool.submit(() -> {
+                CreateReservationRequest req = new CreateReservationRequest(ROOM_ID,
+                        OffsetDateTime.parse(String.format("2026-09-02T%02d:00:00+09:00", hour)),
+                        OffsetDateTime.parse(String.format("2026-09-02T%02d:00:00+09:00", hour + 1)),
+                        "게스트" + hour, null);
+                ready.countDown();
+                try {
+                    startGate.await();
+                    reservationService.reserve(req);
+                    success.incrementAndGet();
+                } catch (Exception ignored) {
+                }
+            });
+        }
+        ready.await();
+        startGate.countDown();
+        pool.shutdown();
+        pool.awaitTermination(30, TimeUnit.SECONDS);
+        return success;
+    }
+
+    private long countConfirmed() {
+        return reservationRepository.findByRoomIdOrderByStartAtAsc(ROOM_ID).stream()
+                .filter(r -> r.getStatus() == ReservationStatus.CONFIRMED)
+                .count();
     }
 }

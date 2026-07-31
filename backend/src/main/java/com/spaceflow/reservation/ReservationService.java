@@ -3,6 +3,7 @@ package com.spaceflow.reservation;
 import com.spaceflow.room.Room;
 import com.spaceflow.room.RoomRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,9 +17,9 @@ public class ReservationService {
     private final ReservationRepository reservationRepository;
 
     /**
-     * 예약 생성 — ⚠️ 순진한(naive) 버전.
-     * "겹치는 예약이 있나?" 확인(check) 후 "없으면 저장(act)" 하는데,
-     * 확인과 저장 사이에 다른 요청이 끼어들 수 있다(경쟁상태). → 동시 요청 시 중복 예약 발생.
+     * 예약 생성 — ✅ 운영 채택 방식: 앱 사전확인(친절한 에러) + DB EXCLUDE 제약(정합성 보장).
+     * 대부분의 겹침은 existsOverlapping에서 걸러 409로 안내하고,
+     * 그 확인을 뚫고 들어온 동시 요청은 reservation_no_overlap 제약이 최후 방어선으로 막는다.
      */
     @Transactional
     public ReservationResponse reserve(CreateReservationRequest req) {
@@ -28,9 +29,8 @@ public class ReservationService {
     }
 
     /**
-     * 예약 생성 — 비관적 락 버전.
-     * 방(Room) 행을 SELECT ... FOR UPDATE 로 잠근 뒤 확인·저장하므로,
-     * 같은 방에 대한 예약이 한 번에 하나씩 직렬 처리된다 → 중복 예약이 막힌다.
+     * 비관적 락 버전 (동시성 방식 비교용).
+     * 방(Room) 행을 SELECT ... FOR UPDATE 로 잠가 같은 방 예약을 직렬화한다.
      */
     @Transactional
     public ReservationResponse reserveWithPessimisticLock(CreateReservationRequest req) {
@@ -40,10 +40,8 @@ public class ReservationService {
     }
 
     /**
-     * 예약 생성 — 낙관적 락 버전.
-     * 방을 조회하며 version 강제 증가를 예약(OPTIMISTIC_FORCE_INCREMENT)하므로,
-     * 같은 방을 동시에 예약하면 커밋 시점에 version 충돌 → 진 쪽은 롤백(예약 취소)된다.
-     * (실서비스라면 충돌 시 재시도를 감싸는 게 보통이다.)
+     * 낙관적 락 버전 (동시성 방식 비교용).
+     * 방의 version을 강제 증가시켜 커밋 시점에 충돌을 감지한다.
      */
     @Transactional
     public ReservationResponse reserveWithOptimisticLock(CreateReservationRequest req) {
@@ -52,15 +50,20 @@ public class ReservationService {
         return checkAndSave(room, req);
     }
 
-    // 겹침 확인 후 저장하는 공통 로직 (방어 방식만 위에서 다르게 감싼다)
     private ReservationResponse checkAndSave(Room room, CreateReservationRequest req) {
-        boolean overlap = reservationRepository.existsOverlapping(req.roomId(), req.startAt(), req.endAt());
-        if (overlap) {
+        // 1) 앱 사전확인 — 대부분의 겹침을 친절한 메시지로 거른다 (UX)
+        if (reservationRepository.existsOverlapping(req.roomId(), req.startAt(), req.endAt())) {
             throw new IllegalStateException("이미 예약된 시간대입니다.");
         }
-        Reservation saved = reservationRepository.save(
-                new Reservation(room, req.startAt(), req.endAt(), req.guestName(), req.guestPhone()));
-        return ReservationResponse.from(saved);
+        try {
+            // 2) 저장 — 사전확인을 뚫은 찰나의 동시 요청은 DB EXCLUDE 제약이 막는다 (정합성)
+            Reservation saved = reservationRepository.save(
+                    new Reservation(room, req.startAt(), req.endAt(), req.guestName(), req.guestPhone()));
+            return ReservationResponse.from(saved);
+        } catch (DataIntegrityViolationException e) {
+            // reservation_no_overlap 제약 위반 = 그 찰나에 겹치는 예약이 먼저 커밋됐다
+            throw new IllegalStateException("이미 예약된 시간대입니다.");
+        }
     }
 
     @Transactional(readOnly = true)
