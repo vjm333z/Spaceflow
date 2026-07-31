@@ -39,6 +39,19 @@ public class ReservationService {
         return checkAndSave(room, req);
     }
 
+    /**
+     * 예약 생성 — 낙관적 락 버전.
+     * 방을 조회하며 version 강제 증가를 예약(OPTIMISTIC_FORCE_INCREMENT)하므로,
+     * 같은 방을 동시에 예약하면 커밋 시점에 version 충돌 → 진 쪽은 롤백(예약 취소)된다.
+     * (실서비스라면 충돌 시 재시도를 감싸는 게 보통이다.)
+     */
+    @Transactional
+    public ReservationResponse reserveWithOptimisticLock(CreateReservationRequest req) {
+        Room room = roomRepository.findByIdForOptimisticLock(req.roomId())
+                .orElseThrow(() -> new IllegalArgumentException("방을 찾을 수 없습니다: " + req.roomId()));
+        return checkAndSave(room, req);
+    }
+
     // 겹침 확인 후 저장하는 공통 로직 (방어 방식만 위에서 다르게 감싼다)
     private ReservationResponse checkAndSave(Room room, CreateReservationRequest req) {
         boolean overlap = reservationRepository.existsOverlapping(req.roomId(), req.startAt(), req.endAt());

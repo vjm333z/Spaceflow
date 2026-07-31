@@ -11,6 +11,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -37,6 +38,10 @@ public class Room extends BaseTimeEntity {
 
     @Column(nullable = false)
     private int capacity;
+
+    // 낙관적 락용 버전 (예약 시 강제 증가시켜 동시 예약 충돌을 감지하는 지점으로 쓴다)
+    @Version
+    private Long version;
 
     public Room(Space space, String name, int capacity) {
         this.space = space;

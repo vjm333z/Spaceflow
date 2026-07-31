@@ -52,6 +52,12 @@ class ReservationConcurrencyTest {
         assertThat(confirmed).isEqualTo(1);
     }
 
+    @Test
+    void 낙관적_락_버전은_동시예약해도_1건만_성공한다() throws InterruptedException {
+        long confirmed = fireConcurrently(reservationService::reserveWithOptimisticLock);
+        assertThat(confirmed).isEqualTo(1);
+    }
+
     /**
      * 스레드 20개가 같은 방·같은 시간을 동시에 예약하도록 발사하고,
      * 최종적으로 DB에 남은 CONFIRMED 예약 수를 돌려준다.
