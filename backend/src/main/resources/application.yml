@@ -35,3 +35,9 @@ logging:
   level:
     # 개발 중 실행되는 SQL을 로그로 확인
     org.hibernate.SQL: debug
+
+# JWT 설정 (운영에서는 secret을 환경변수로 주입: APP_JWT_SECRET 등)
+app:
+  jwt:
+    secret: "spaceflow-dev-jwt-secret-change-me-please-0123456789-abcdefghij"
+    expiration-minutes: 60
