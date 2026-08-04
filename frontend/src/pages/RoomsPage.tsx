@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
 import { getRooms } from '../api/rooms'
 
 export default function RoomsPage() {
@@ -18,22 +19,24 @@ export default function RoomsPage() {
 
       <ul className="grid gap-4 sm:grid-cols-2">
         {rooms?.map((room) => (
-          <li
-            key={room.id}
-            className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition hover:shadow-md"
-          >
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-gray-900">{room.name}</h2>
-              <span className="rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700">
-                정원 {room.capacity}
-              </span>
-            </div>
-            <p className="mt-3 text-sm text-gray-500">
-              시간당{' '}
-              <span className="font-semibold text-gray-900">
-                {room.basePricePerHour.toLocaleString()}원
-              </span>
-            </p>
+          <li key={room.id}>
+            <Link
+              to={`/rooms/${room.id}/book`}
+              className="block rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition hover:border-indigo-300 hover:shadow-md"
+            >
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-gray-900">{room.name}</h2>
+                <span className="rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700">
+                  정원 {room.capacity}
+                </span>
+              </div>
+              <p className="mt-3 text-sm text-gray-500">
+                시간당{' '}
+                <span className="font-semibold text-gray-900">
+                  {room.basePricePerHour.toLocaleString()}원
+                </span>
+              </p>
+            </Link>
           </li>
         ))}
       </ul>
