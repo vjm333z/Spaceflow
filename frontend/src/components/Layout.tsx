@@ -14,6 +14,11 @@ export default function Layout() {
           <nav className="flex items-center gap-4 text-sm">
             {user ? (
               <>
+                {user.role === 'OWNER' && (
+                  <Link to="/owner" className="font-medium text-indigo-600 hover:underline">
+                    대시보드
+                  </Link>
+                )}
                 <span className="text-gray-600">{user.email}</span>
                 <button onClick={logout} className="text-gray-500 hover:text-gray-900">
                   로그아웃
