@@ -35,4 +35,16 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
             order by r.startAt asc
             """)
     List<Reservation> findByTenantId(@Param("tenantId") Long tenantId);
+
+    // 특정 방의 하루치 예약(취소 제외) — 가용시간 슬롯 표시용
+    @Query("""
+            select r from Reservation r
+            where r.room.id = :roomId
+              and r.status <> com.spaceflow.reservation.ReservationStatus.CANCELLED
+              and r.startAt < :dayEnd and r.endAt > :dayStart
+            order by r.startAt asc
+            """)
+    List<Reservation> findActiveByRoomAndRange(@Param("roomId") Long roomId,
+                                               @Param("dayStart") OffsetDateTime dayStart,
+                                               @Param("dayEnd") OffsetDateTime dayEnd);
 }

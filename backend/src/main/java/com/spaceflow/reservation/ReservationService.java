@@ -9,11 +9,22 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Duration;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class ReservationService {
+
+    private static final ZoneId BUSINESS_ZONE = ZoneId.of("Asia/Seoul");
+    private static final LocalTime OPEN = LocalTime.of(8, 0);
+    private static final LocalTime CLOSE = LocalTime.of(22, 0);
+    private static final long MAX_HOURS = 8;
 
     private final RoomRepository roomRepository;
     private final ReservationRepository reservationRepository;
@@ -57,6 +68,7 @@ public class ReservationService {
     }
 
     private ReservationResponse checkAndSave(Room room, CreateReservationRequest req) {
+        validateBookingTime(req);
         // 1) 앱 사전확인 — 대부분의 겹침을 친절한 메시지로 거른다 (UX)
         if (reservationRepository.existsOverlapping(req.roomId(), req.startAt(), req.endAt())) {
             throw new IllegalStateException("이미 예약된 시간대입니다.");
@@ -72,6 +84,37 @@ public class ReservationService {
             // reservation_no_overlap 제약 위반 = 그 찰나에 겹치는 예약이 먼저 커밋됐다
             throw new IllegalStateException("이미 예약된 시간대입니다.");
         }
+    }
+
+    // 예약 규칙 검증: 지난 시간 금지, 영업시간(08~22) 내, 최대 8시간
+    private void validateBookingTime(CreateReservationRequest req) {
+        if (!req.endAt().isAfter(req.startAt())) {
+            throw new IllegalArgumentException("종료 시각이 시작 시각보다 뒤여야 합니다.");
+        }
+        if (req.startAt().isBefore(OffsetDateTime.now())) {
+            throw new IllegalArgumentException("지난 시간은 예약할 수 없습니다.");
+        }
+        if (Duration.between(req.startAt(), req.endAt()).toMinutes() > MAX_HOURS * 60) {
+            throw new IllegalArgumentException("최대 " + MAX_HOURS + "시간까지 예약할 수 있습니다.");
+        }
+        ZonedDateTime start = req.startAt().atZoneSameInstant(BUSINESS_ZONE);
+        ZonedDateTime end = req.endAt().atZoneSameInstant(BUSINESS_ZONE);
+        boolean outOfHours = start.toLocalTime().isBefore(OPEN)
+                || end.toLocalTime().isAfter(CLOSE)
+                || end.toLocalDate().isAfter(start.toLocalDate()); // 자정 넘김 금지
+        if (outOfHours) {
+            throw new IllegalArgumentException("영업시간(08:00~22:00) 내에서 예약할 수 있습니다.");
+        }
+    }
+
+    /** 특정 방·날짜의 예약된 시간대 목록 (가용시간 슬롯 표시용). */
+    @Transactional(readOnly = true)
+    public List<BookedSlot> bookedSlots(Long roomId, LocalDate date) {
+        OffsetDateTime dayStart = date.atStartOfDay(BUSINESS_ZONE).toOffsetDateTime();
+        OffsetDateTime dayEnd = date.plusDays(1).atStartOfDay(BUSINESS_ZONE).toOffsetDateTime();
+        return reservationRepository.findActiveByRoomAndRange(roomId, dayStart, dayEnd).stream()
+                .map(BookedSlot::from)
+                .toList();
     }
 
     @Transactional(readOnly = true)
