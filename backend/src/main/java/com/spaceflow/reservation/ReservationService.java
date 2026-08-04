@@ -20,13 +20,16 @@ public class ReservationService {
     private final PricingService pricingService;
 
     /**
-     * 예약 생성 — ✅ 운영 채택 방식: 앱 사전확인(친절한 에러) + DB EXCLUDE 제약(정합성 보장).
-     * 대부분의 겹침은 existsOverlapping에서 걸러 409로 안내하고,
-     * 그 확인을 뚫고 들어온 동시 요청은 reservation_no_overlap 제약이 최후 방어선으로 막는다.
+     * 예약 생성 — ✅ 운영 채택 방식: 비관적 락(방 행 FOR UPDATE) + DB EXCLUDE 제약(최후 방어선).
+     *
+     * 처음엔 "EXCLUDE 제약 + 앱 사전확인"만 썼으나, k6 부하테스트(동시 100요청)에서
+     * 여러 트랜잭션이 GiST 인덱스 락을 제각각 순서로 잡아 데드락 + 커넥션풀 고갈(30초 타임아웃)이 발생했다.
+     * → 방(Room) 행을 먼저 잠가 같은 방 예약을 단일 순서로 직렬화하면 순환 대기가 사라져 데드락이 없어진다.
+     *   각 처리가 빨라 커넥션도 즉시 반납되어 타임아웃도 해소. EXCLUDE 제약은 정합성 백스톱으로 유지.
      */
     @Transactional
     public ReservationResponse reserve(CreateReservationRequest req) {
-        Room room = roomRepository.findById(req.roomId())
+        Room room = roomRepository.findByIdForUpdate(req.roomId())
                 .orElseThrow(() -> new IllegalArgumentException("방을 찾을 수 없습니다: " + req.roomId()));
         return checkAndSave(room, req);
     }
