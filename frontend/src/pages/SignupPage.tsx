@@ -5,6 +5,9 @@ import axios from 'axios'
 import { login, signup } from '../api/auth'
 import { useAuth } from '../auth/useAuth'
 
+const inputCls =
+  'w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100'
+
 export default function SignupPage() {
   const navigate = useNavigate()
   const { setToken } = useAuth()
@@ -14,7 +17,7 @@ export default function SignupPage() {
   const mutation = useMutation({
     mutationFn: async () => {
       await signup(email, password)
-      return login(email, password) // 가입 후 자동 로그인
+      return login(email, password)
     },
     onSuccess: (token) => {
       setToken(token.accessToken)
@@ -31,43 +34,32 @@ export default function SignupPage() {
     : null
 
   return (
-    <div className="mx-auto max-w-sm p-8">
-      <h1 className="mb-6 text-2xl font-bold text-gray-900">회원가입</h1>
-      <form
-        className="space-y-4"
-        onSubmit={(e) => {
-          e.preventDefault()
-          mutation.mutate()
-        }}
-      >
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="이메일"
-          className="w-full rounded-lg border border-gray-300 px-3 py-2"
-        />
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="비밀번호 (8자 이상)"
-          className="w-full rounded-lg border border-gray-300 px-3 py-2"
-        />
-        {errorMsg && <p className="text-sm text-red-600">{errorMsg}</p>}
-        <button
-          type="submit"
-          disabled={!email || password.length < 8 || mutation.isPending}
-          className="w-full rounded-xl bg-indigo-600 py-3 font-semibold text-white hover:bg-indigo-700 disabled:bg-gray-300"
+    <div className="mx-auto flex min-h-[70vh] max-w-sm flex-col justify-center px-6">
+      <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+        <h1 className="text-xl font-extrabold tracking-tight text-slate-900">회원가입</h1>
+        <p className="mt-1 mb-6 text-sm text-slate-400">이메일로 간편하게 시작하세요.</p>
+        <form
+          className="space-y-3"
+          onSubmit={(e) => {
+            e.preventDefault()
+            mutation.mutate()
+          }}
         >
-          {mutation.isPending ? '가입 중…' : '회원가입'}
-        </button>
-      </form>
-      <p className="mt-4 text-center text-sm text-gray-500">
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="이메일" className={inputCls} />
+          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="비밀번호 (8자 이상)" className={inputCls} />
+          {errorMsg && <p className="text-sm text-rose-600">{errorMsg}</p>}
+          <button
+            type="submit"
+            disabled={!email || password.length < 8 || mutation.isPending}
+            className="w-full rounded-xl bg-indigo-600 py-3 font-bold text-white transition hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400"
+          >
+            {mutation.isPending ? '가입 중…' : '회원가입'}
+          </button>
+        </form>
+      </div>
+      <p className="mt-4 text-center text-sm text-slate-500">
         이미 계정이 있으신가요?{' '}
-        <Link to="/login" className="text-indigo-600 hover:underline">
-          로그인
-        </Link>
+        <Link to="/login" className="font-semibold text-indigo-600 hover:underline">로그인</Link>
       </p>
     </div>
   )
