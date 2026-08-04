@@ -1,5 +1,6 @@
 package com.spaceflow.reservation;
 
+import com.spaceflow.pricing.PricingService;
 import com.spaceflow.room.Room;
 import com.spaceflow.room.RoomRepository;
 import lombok.RequiredArgsConstructor;
@@ -7,6 +8,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Service
@@ -15,6 +17,7 @@ public class ReservationService {
 
     private final RoomRepository roomRepository;
     private final ReservationRepository reservationRepository;
+    private final PricingService pricingService;
 
     /**
      * 예약 생성 — ✅ 운영 채택 방식: 앱 사전확인(친절한 에러) + DB EXCLUDE 제약(정합성 보장).
@@ -55,10 +58,12 @@ public class ReservationService {
         if (reservationRepository.existsOverlapping(req.roomId(), req.startAt(), req.endAt())) {
             throw new IllegalStateException("이미 예약된 시간대입니다.");
         }
+        // 예약 확정 시점의 요금을 계산해 스냅샷으로 저장한다
+        BigDecimal price = pricingService.quote(req.roomId(), req.startAt(), req.endAt()).total();
         try {
             // 2) 저장 — 사전확인을 뚫은 찰나의 동시 요청은 DB EXCLUDE 제약이 막는다 (정합성)
             Reservation saved = reservationRepository.save(
-                    new Reservation(room, req.startAt(), req.endAt(), req.guestName(), req.guestPhone()));
+                    new Reservation(room, req.startAt(), req.endAt(), req.guestName(), req.guestPhone(), price));
             return ReservationResponse.from(saved);
         } catch (DataIntegrityViolationException e) {
             // reservation_no_overlap 제약 위반 = 그 찰나에 겹치는 예약이 먼저 커밋됐다

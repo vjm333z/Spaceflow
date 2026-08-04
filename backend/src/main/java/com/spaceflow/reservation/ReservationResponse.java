@@ -1,5 +1,6 @@
 package com.spaceflow.reservation;
 
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 
 /**
@@ -11,7 +12,8 @@ public record ReservationResponse(
         OffsetDateTime startAt,
         OffsetDateTime endAt,
         String status,
-        String guestName
+        String guestName,
+        BigDecimal price
 ) {
     static ReservationResponse from(Reservation r) {
         return new ReservationResponse(
@@ -20,7 +22,8 @@ public record ReservationResponse(
                 r.getStartAt(),
                 r.getEndAt(),
                 r.getStatus().name(),
-                r.getGuestName()
+                r.getGuestName(),
+                r.getPrice()
         );
     }
 }

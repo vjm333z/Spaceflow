@@ -16,6 +16,8 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
+
 /**
  * 방 — 예약 대상 단위. 특정 지점에 속한다. (예: "4인실 A", 정원 4)
  */
@@ -39,13 +41,18 @@ public class Room extends BaseTimeEntity {
     @Column(nullable = false)
     private int capacity;
 
+    // 시간당 기본요금 (원). 돈은 오차 방지를 위해 BigDecimal 사용.
+    @Column(name = "base_price_per_hour", nullable = false)
+    private BigDecimal basePricePerHour;
+
     // 낙관적 락용 버전 (예약 시 강제 증가시켜 동시 예약 충돌을 감지하는 지점으로 쓴다)
     @Version
     private Long version;
 
-    public Room(Space space, String name, int capacity) {
+    public Room(Space space, String name, int capacity, BigDecimal basePricePerHour) {
         this.space = space;
         this.name = name;
         this.capacity = capacity;
+        this.basePricePerHour = basePricePerHour;
     }
 }

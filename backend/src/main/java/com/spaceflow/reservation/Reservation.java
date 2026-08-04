@@ -18,6 +18,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 
 /**
@@ -54,17 +55,22 @@ public class Reservation extends BaseTimeEntity {
     @Column(name = "guest_phone", length = 30)
     private String guestPhone;
 
+    // 예약 확정 시점의 요금 스냅샷 (정책이 바뀌어도 과거 금액 보존)
+    @Column
+    private BigDecimal price;
+
     // 낙관적 락: 동시 수정 충돌을 감지하는 버전 컬럼 (동시성 단계에서 활용)
     @Version
     private Long version;
 
     public Reservation(Room room, OffsetDateTime startAt, OffsetDateTime endAt,
-                       String guestName, String guestPhone) {
+                       String guestName, String guestPhone, BigDecimal price) {
         this.room = room;
         this.startAt = startAt;
         this.endAt = endAt;
         this.guestName = guestName;
         this.guestPhone = guestPhone;
+        this.price = price;
         this.status = ReservationStatus.CONFIRMED;
     }
 
