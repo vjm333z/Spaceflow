@@ -77,7 +77,7 @@ public class SecurityConfig {
                         // 공개 엔드포인트
                         .requestMatchers("/api/auth/signup", "/api/auth/login").permitAll()
                         .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/rooms/*/quote").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/rooms", "/api/rooms/*/quote").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/reservations").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/reservations").permitAll()
                         // 그 외는 인증 필요
