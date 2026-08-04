@@ -77,4 +77,12 @@ public class ReservationService {
                 .map(ReservationResponse::from)
                 .toList();
     }
+
+    /** 특정 테넌트(사업자)의 예약 목록. tenantId는 인증된 사장의 JWT에서 온다. */
+    @Transactional(readOnly = true)
+    public List<ReservationResponse> reservationsForTenant(Long tenantId) {
+        return reservationRepository.findByTenantId(tenantId).stream()
+                .map(ReservationResponse::from)
+                .toList();
+    }
 }

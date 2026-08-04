@@ -27,4 +27,12 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
                               @Param("endAt") OffsetDateTime endAt);
 
     List<Reservation> findByRoomIdOrderByStartAtAsc(Long roomId);
+
+    // 멀티테넌시: 특정 테넌트(사업자)에 속한 예약만 조회 (방→지점→테넌트 경로로 필터)
+    @Query("""
+            select r from Reservation r
+            where r.room.space.tenant.id = :tenantId
+            order by r.startAt asc
+            """)
+    List<Reservation> findByTenantId(@Param("tenantId") Long tenantId);
 }

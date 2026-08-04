@@ -7,6 +7,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -26,6 +27,7 @@ import java.nio.charset.StandardCharsets;
 
 @Configuration
 @EnableConfigurationProperties(JwtProperties.class)
+@EnableMethodSecurity   // @PreAuthorize("hasRole('OWNER')") 사용 가능하게
 @RequiredArgsConstructor
 public class SecurityConfig {
 
