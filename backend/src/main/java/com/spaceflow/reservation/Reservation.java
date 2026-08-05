@@ -76,7 +76,14 @@ public class Reservation extends BaseTimeEntity {
         this.guestPhone = guestPhone;
         this.price = price;
         this.userId = userId;
-        this.status = ReservationStatus.CONFIRMED;
+        this.status = ReservationStatus.PENDING; // 결제 전 대기
+    }
+
+    // 결제 완료 → 확정 (대기 상태일 때만)
+    public void confirm() {
+        if (this.status == ReservationStatus.PENDING) {
+            this.status = ReservationStatus.CONFIRMED;
+        }
     }
 
     // 취소는 상태 변경으로만 (레코드를 지우지 않는다 — 이력 보존)

@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
 import { getAvailability, getQuote, getRooms } from '../api/rooms'
-import { createReservation } from '../api/reservations'
+import { createReservation, payReservation } from '../api/reservations'
 
 function iso(date: string, hour: number): string {
   return `${date}T${String(hour).padStart(2, '0')}:00:00+09:00`
@@ -70,6 +70,19 @@ export default function BookingPage() {
     },
   })
 
+  const pay = useMutation({
+    mutationFn: () => payReservation(reserve.data!.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-reservations'] })
+      queryClient.invalidateQueries({ queryKey: ['owner-reservations'] })
+    },
+  })
+
+  const resetAll = () => {
+    pay.reset()
+    reserve.reset()
+  }
+
   const conflictMessage =
     axios.isAxiosError(reserve.error)
       ? (reserve.error.response?.data as { error?: string })?.error ?? '예약에 실패했어요.'
@@ -95,23 +108,39 @@ export default function BookingPage() {
         )}
       </div>
 
-      {reserve.isSuccess ? (
+      {pay.isSuccess ? (
         <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-8 text-center">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500 text-white">
             <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="3">
               <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </div>
-          <p className="mt-4 text-lg font-bold text-emerald-900">예약이 완료됐어요</p>
-          <p className="mt-1 text-sm text-emerald-700">
-            {date} {startHour}:00~{endHour}:00
-          </p>
-          <p className="mt-3 text-2xl font-extrabold text-emerald-900">{reserve.data.price?.toLocaleString()}원</p>
+          <p className="mt-4 text-lg font-bold text-emerald-900">결제가 완료됐어요</p>
+          <p className="mt-1 text-sm text-emerald-700">{date} {startHour}:00~{endHour}:00 · 예약 확정</p>
+          <p className="mt-3 text-2xl font-extrabold text-emerald-900">{pay.data.price?.toLocaleString()}원</p>
           <button
             className="mt-6 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700"
-            onClick={() => reserve.reset()}
+            onClick={resetAll}
           >
             다른 시간 예약하기
+          </button>
+        </div>
+      ) : reserve.isSuccess ? (
+        <div className="rounded-2xl border border-indigo-200 bg-indigo-50 p-8 text-center">
+          <p className="text-xs font-bold uppercase tracking-wide text-indigo-500">결제 대기</p>
+          <p className="mt-2 text-lg font-bold text-slate-900">예약이 잡혔어요</p>
+          <p className="mt-1 text-sm text-slate-500">{date} {startHour}:00~{endHour}:00</p>
+          <p className="mt-4 text-3xl font-extrabold text-slate-900">{reserve.data.price?.toLocaleString()}원</p>
+          <p className="mt-1 text-xs text-slate-400">결제하면 예약이 확정됩니다 (모의 결제)</p>
+          <button
+            disabled={pay.isPending}
+            onClick={() => pay.mutate()}
+            className="mt-5 w-full rounded-xl bg-indigo-600 py-3 font-bold text-white transition hover:bg-indigo-700 disabled:bg-slate-300"
+          >
+            {pay.isPending ? '결제 중…' : `${reserve.data.price?.toLocaleString()}원 결제하기`}
+          </button>
+          <button onClick={resetAll} className="mt-2 text-sm text-slate-400 hover:text-slate-600">
+            취소하고 다시 고르기
           </button>
         </div>
       ) : (

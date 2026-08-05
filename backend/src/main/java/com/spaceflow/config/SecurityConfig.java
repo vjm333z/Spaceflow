@@ -79,6 +79,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/rooms", "/api/rooms/*/quote", "/api/rooms/*/availability").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/reservations").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/reservations/*/pay").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/reservations").permitAll()
                         // 그 외는 인증 필요
                         .anyRequest().authenticated())

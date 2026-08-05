@@ -156,4 +156,16 @@ public class ReservationService {
         }
         reservation.cancel();
     }
+
+    /** 결제(모의) → 예약 확정. PENDING을 CONFIRMED로. */
+    @Transactional
+    public ReservationResponse pay(Long reservationId) {
+        Reservation reservation = reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new IllegalArgumentException("예약을 찾을 수 없습니다."));
+        if (reservation.getStatus() == ReservationStatus.CANCELLED) {
+            throw new IllegalStateException("취소된 예약은 결제할 수 없습니다.");
+        }
+        reservation.confirm();
+        return ReservationResponse.from(reservation);
+    }
 }

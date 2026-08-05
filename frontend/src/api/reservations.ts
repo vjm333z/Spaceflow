@@ -25,3 +25,9 @@ export async function getMyReservations(): Promise<Reservation[]> {
 export async function cancelReservation(id: number): Promise<void> {
   await api.post(`/reservations/${id}/cancel`)
 }
+
+// 모의 결제 → 예약 확정
+export async function payReservation(id: number): Promise<Reservation> {
+  const { data } = await api.post<Reservation>(`/reservations/${id}/pay`)
+  return data
+}

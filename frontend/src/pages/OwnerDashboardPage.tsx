@@ -40,8 +40,9 @@ export default function OwnerDashboardPage() {
   if (isLoading) return <p className="mx-auto max-w-4xl px-6 py-12 text-slate-500">불러오는 중…</p>
   if (error) return <p className="mx-auto max-w-4xl px-6 py-12 text-rose-600">예약을 불러오지 못했어요.</p>
 
-  const total = reservations?.reduce((sum, r) => sum + (r.price ?? 0), 0) ?? 0
-  const count = reservations?.length ?? 0
+  // 매출은 결제 완료(CONFIRMED)된 예약만 집계
+  const total = reservations?.filter((r) => r.status === 'CONFIRMED').reduce((sum, r) => sum + (r.price ?? 0), 0) ?? 0
+  const count = reservations?.filter((r) => r.status !== 'CANCELLED').length ?? 0
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-10">
@@ -62,7 +63,7 @@ export default function OwnerDashboardPage() {
           <p className="mt-1 text-3xl font-extrabold tabular-nums text-slate-900">{count}<span className="ml-1 text-base font-medium text-slate-400">건</span></p>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-sm text-slate-400">누적 매출</p>
+          <p className="text-sm text-slate-400">확정 매출</p>
           <p className="mt-1 text-3xl font-extrabold tabular-nums text-indigo-600">{total.toLocaleString()}<span className="ml-1 text-base font-medium text-slate-400">원</span></p>
         </div>
       </div>
@@ -81,7 +82,11 @@ export default function OwnerDashboardPage() {
             <tbody className="divide-y divide-slate-100">
               {reservations!.map((r) => (
                 <tr key={r.id} className="transition hover:bg-slate-50">
-                  <td className="px-5 py-3.5 font-medium text-slate-900">{roomName(r.roomId)}</td>
+                  <td className="px-5 py-3.5 font-medium text-slate-900">
+                    {roomName(r.roomId)}
+                    {r.status === 'PENDING' && <span className="ml-2 rounded-full bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-700">대기</span>}
+                    {r.status === 'CANCELLED' && <span className="ml-2 rounded-full bg-slate-200 px-1.5 py-0.5 text-xs font-medium text-slate-500">취소</span>}
+                  </td>
                   <td className="px-5 py-3.5 text-slate-500">{fmt(r.startAt)} ~ {fmt(r.endAt).split(' ').pop()}</td>
                   <td className="px-5 py-3.5 text-slate-600">{r.guestName}</td>
                   <td className="px-5 py-3.5 text-right font-semibold tabular-nums text-slate-900">{r.price?.toLocaleString()}원</td>

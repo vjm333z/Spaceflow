@@ -74,7 +74,7 @@ class ReservationConcurrencyTest {
         int threadCount = 20;
         OffsetDateTime start = OffsetDateTime.parse("2026-09-01T10:00:00+09:00");
         OffsetDateTime end = OffsetDateTime.parse("2026-09-01T12:00:00+09:00");
-        CreateReservationRequest req = new CreateReservationRequest(ROOM_ID, start, end, "동시성테스터", null);
+        CreateReservationRequest req = new CreateReservationRequest(ROOM_ID, start, end, "동시성테스터", null, null);
 
         ExecutorService pool = Executors.newFixedThreadPool(threadCount);
         CountDownLatch ready = new CountDownLatch(threadCount);
@@ -119,7 +119,7 @@ class ReservationConcurrencyTest {
                 CreateReservationRequest req = new CreateReservationRequest(ROOM_ID,
                         OffsetDateTime.parse(String.format("2026-09-02T%02d:00:00+09:00", hour)),
                         OffsetDateTime.parse(String.format("2026-09-02T%02d:00:00+09:00", hour + 1)),
-                        "게스트" + hour, null);
+                        "게스트" + hour, null, null);
                 ready.countDown();
                 try {
                     startGate.await();
@@ -136,9 +136,10 @@ class ReservationConcurrencyTest {
         return success;
     }
 
+    // 활성 예약(취소 제외) 수 — 예약은 생성 시 PENDING이므로 CONFIRMED만 세면 안 된다
     private long countConfirmed() {
         return reservationRepository.findByRoomIdOrderByStartAtAsc(ROOM_ID).stream()
-                .filter(r -> r.getStatus() == ReservationStatus.CONFIRMED)
+                .filter(r -> r.getStatus() != ReservationStatus.CANCELLED)
                 .count();
     }
 }

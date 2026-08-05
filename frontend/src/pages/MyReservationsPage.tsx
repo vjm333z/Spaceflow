@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { cancelReservation, getMyReservations } from '../api/reservations'
+import { cancelReservation, getMyReservations, payReservation } from '../api/reservations'
 import { getRooms } from '../api/rooms'
 import { useAuth } from '../auth/useAuth'
 
@@ -33,6 +33,10 @@ export default function MyReservationsPage() {
       queryClient.invalidateQueries({ queryKey: ['availability'] })
     },
   })
+  const pay = useMutation({
+    mutationFn: (id: number) => payReservation(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['my-reservations'] }),
+  })
 
   if (!user) {
     return (
@@ -59,6 +63,7 @@ export default function MyReservationsPage() {
       <ul className="space-y-3">
         {reservations?.map((r) => {
           const cancelled = r.status === 'CANCELLED'
+          const pending = r.status === 'PENDING'
           return (
             <li
               key={r.id}
@@ -69,22 +74,33 @@ export default function MyReservationsPage() {
                   <span className={`font-bold ${cancelled ? 'text-slate-400 line-through' : 'text-slate-900'}`}>
                     {roomName(r.roomId)}
                   </span>
-                  {cancelled && (
-                    <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-500">취소됨</span>
-                  )}
+                  {cancelled && <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-500">취소됨</span>}
+                  {pending && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">결제 대기</span>}
+                  {r.status === 'CONFIRMED' && <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">확정</span>}
                 </div>
                 <p className="mt-1 text-sm text-slate-500">
                   {fmt(r.startAt)} ~ {fmt(r.endAt).split(' ').pop()} · {r.price?.toLocaleString()}원
                 </p>
               </div>
               {!cancelled && (
-                <button
-                  onClick={() => cancel.mutate(r.id)}
-                  disabled={cancel.isPending}
-                  className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:border-rose-300 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50"
-                >
-                  취소
-                </button>
+                <div className="flex gap-2">
+                  {pending && (
+                    <button
+                      onClick={() => pay.mutate(r.id)}
+                      disabled={pay.isPending}
+                      className="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
+                    >
+                      결제하기
+                    </button>
+                  )}
+                  <button
+                    onClick={() => cancel.mutate(r.id)}
+                    disabled={cancel.isPending}
+                    className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:border-rose-300 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50"
+                  >
+                    취소
+                  </button>
+                </div>
               )}
             </li>
           )

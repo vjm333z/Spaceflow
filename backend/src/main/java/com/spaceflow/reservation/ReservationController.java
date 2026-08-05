@@ -44,6 +44,12 @@ public class ReservationController {
         return reservationService.myReservations(Long.valueOf(jwt.getSubject()));
     }
 
+    // 공개: 모의 결제 → 예약 확정 (방금 예약한 사람이 결제)
+    @PostMapping("/{id}/pay")
+    public ReservationResponse pay(@PathVariable Long id) {
+        return reservationService.pay(id);
+    }
+
     // 인증 필요: 내 예약 취소
     @PostMapping("/{id}/cancel")
     public ResponseEntity<Void> cancel(@PathVariable Long id, @AuthenticationPrincipal Jwt jwt) {
