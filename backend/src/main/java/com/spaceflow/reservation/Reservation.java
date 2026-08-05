@@ -59,18 +59,23 @@ public class Reservation extends BaseTimeEntity {
     @Column
     private BigDecimal price;
 
+    // 예약한 로그인 사용자 (비로그인 예약이면 null)
+    @Column(name = "user_id")
+    private Long userId;
+
     // 낙관적 락: 동시 수정 충돌을 감지하는 버전 컬럼 (동시성 단계에서 활용)
     @Version
     private Long version;
 
     public Reservation(Room room, OffsetDateTime startAt, OffsetDateTime endAt,
-                       String guestName, String guestPhone, BigDecimal price) {
+                       String guestName, String guestPhone, BigDecimal price, Long userId) {
         this.room = room;
         this.startAt = startAt;
         this.endAt = endAt;
         this.guestName = guestName;
         this.guestPhone = guestPhone;
         this.price = price;
+        this.userId = userId;
         this.status = ReservationStatus.CONFIRMED;
     }
 

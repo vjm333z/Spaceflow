@@ -5,6 +5,7 @@ import com.spaceflow.room.Room;
 import com.spaceflow.room.RoomRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,9 +41,14 @@ public class ReservationService {
      */
     @Transactional
     public ReservationResponse reserve(CreateReservationRequest req) {
+        return reserve(req, null); // 비로그인 예약
+    }
+
+    @Transactional
+    public ReservationResponse reserve(CreateReservationRequest req, Long userId) {
         Room room = roomRepository.findByIdForUpdate(req.roomId())
                 .orElseThrow(() -> new IllegalArgumentException("방을 찾을 수 없습니다: " + req.roomId()));
-        return checkAndSave(room, req);
+        return checkAndSave(room, req, userId);
     }
 
     /**
@@ -53,7 +59,7 @@ public class ReservationService {
     public ReservationResponse reserveWithPessimisticLock(CreateReservationRequest req) {
         Room room = roomRepository.findByIdForUpdate(req.roomId())
                 .orElseThrow(() -> new IllegalArgumentException("방을 찾을 수 없습니다: " + req.roomId()));
-        return checkAndSave(room, req);
+        return checkAndSave(room, req, null);
     }
 
     /**
@@ -64,10 +70,10 @@ public class ReservationService {
     public ReservationResponse reserveWithOptimisticLock(CreateReservationRequest req) {
         Room room = roomRepository.findByIdForOptimisticLock(req.roomId())
                 .orElseThrow(() -> new IllegalArgumentException("방을 찾을 수 없습니다: " + req.roomId()));
-        return checkAndSave(room, req);
+        return checkAndSave(room, req, null);
     }
 
-    private ReservationResponse checkAndSave(Room room, CreateReservationRequest req) {
+    private ReservationResponse checkAndSave(Room room, CreateReservationRequest req, Long userId) {
         validateBookingTime(req);
         // 1) 앱 사전확인 — 대부분의 겹침을 친절한 메시지로 거른다 (UX)
         if (reservationRepository.existsOverlapping(req.roomId(), req.startAt(), req.endAt())) {
@@ -78,7 +84,7 @@ public class ReservationService {
         try {
             // 2) 저장 — 사전확인을 뚫은 찰나의 동시 요청은 DB EXCLUDE 제약이 막는다 (정합성)
             Reservation saved = reservationRepository.save(
-                    new Reservation(room, req.startAt(), req.endAt(), req.guestName(), req.guestPhone(), price));
+                    new Reservation(room, req.startAt(), req.endAt(), req.guestName(), req.guestPhone(), price, userId));
             return ReservationResponse.from(saved);
         } catch (DataIntegrityViolationException e) {
             // reservation_no_overlap 제약 위반 = 그 찰나에 겹치는 예약이 먼저 커밋됐다
@@ -130,5 +136,24 @@ public class ReservationService {
         return reservationRepository.findByTenantId(tenantId).stream()
                 .map(ReservationResponse::from)
                 .toList();
+    }
+
+    /** 내 예약 목록 (로그인 사용자). */
+    @Transactional(readOnly = true)
+    public List<ReservationResponse> myReservations(Long userId) {
+        return reservationRepository.findByUserIdOrderByStartAtDesc(userId).stream()
+                .map(ReservationResponse::from)
+                .toList();
+    }
+
+    /** 예약 취소 — 본인 예약만 가능. 레코드를 지우지 않고 상태만 CANCELLED로. */
+    @Transactional
+    public void cancel(Long reservationId, Long userId) {
+        Reservation reservation = reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new IllegalArgumentException("예약을 찾을 수 없습니다."));
+        if (!userId.equals(reservation.getUserId())) {
+            throw new AccessDeniedException("본인 예약만 취소할 수 있습니다.");
+        }
+        reservation.cancel();
     }
 }

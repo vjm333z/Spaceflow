@@ -109,7 +109,7 @@ EXCLUDE 제약만으로도 정합성은 지켜졌지만, 동시 요청이 GiST �
 docker compose up -d
 
 # 2. 백엔드 (Java 21 필요)
-cd backend && ./gradlew bootRun          # http://localhost:8080
+cd backend && ./gradlew bootRun          # http://localhost:8123
 
 # 3. 프론트엔드
 cd frontend && npm install && npm run dev # http://localhost:5173

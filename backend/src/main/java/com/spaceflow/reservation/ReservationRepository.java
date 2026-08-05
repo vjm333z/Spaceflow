@@ -28,6 +28,9 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
 
     List<Reservation> findByRoomIdOrderByStartAtAsc(Long roomId);
 
+    // 내 예약 (로그인 사용자 기준, 최신순)
+    List<Reservation> findByUserIdOrderByStartAtDesc(Long userId);
+
     // 멀티테넌시: 특정 테넌트(사업자)에 속한 예약만 조회 (방→지점→테넌트 경로로 필터)
     @Query("""
             select r from Reservation r

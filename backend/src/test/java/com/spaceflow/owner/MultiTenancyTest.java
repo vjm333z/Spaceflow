@@ -65,10 +65,10 @@ class MultiTenancyTest {
         // 각 테넌트에 예약 1건씩
         reservationRepository.save(new Reservation(room1,
                 odt("2026-10-01T10:00:00+09:00"), odt("2026-10-01T11:00:00+09:00"),
-                "테넌트1손님", null, new BigDecimal("10000")));
+                "테넌트1손님", null, new BigDecimal("10000"), null));
         reservationRepository.save(new Reservation(room2,
                 odt("2026-10-01T10:00:00+09:00"), odt("2026-10-01T11:00:00+09:00"),
-                "테넌트2손님", null, new BigDecimal("12000")));
+                "테넌트2손님", null, new BigDecimal("12000"), null));
 
         // 각 테넌트 사장 계정
         userRepository.save(new User("owner1@demo.com", passwordEncoder.encode("password123"), Role.OWNER, 1L));
