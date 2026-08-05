@@ -29,6 +29,7 @@ export default function BookingPage() {
   const [duration, setDuration] = useState(2)
   const [guestName, setGuestName] = useState('')
   const [guestPhone, setGuestPhone] = useState('')
+  const [couponCode, setCouponCode] = useState('')
 
   const startAt = iso(date, startHour)
   const endAt = iso(date, startHour + duration)
@@ -54,13 +55,15 @@ export default function BookingPage() {
   const overClose = endHour > CLOSE
 
   const { data: quote } = useQuery({
-    queryKey: ['quote', id, startAt, endAt],
-    queryFn: () => getQuote(id, startAt, endAt),
+    queryKey: ['quote', id, startAt, endAt, couponCode],
+    queryFn: () => getQuote(id, startAt, endAt, couponCode || undefined),
     enabled: !!id,
   })
+  const couponApplied = quote?.lines.some((l) => l.label.startsWith('쿠폰')) ?? false
+  const couponInvalid = !!couponCode && !!quote && !couponApplied && !overlaps && !overClose
 
   const reserve = useMutation({
-    mutationFn: () => createReservation({ roomId: id, startAt, endAt, guestName, guestPhone }),
+    mutationFn: () => createReservation({ roomId: id, startAt, endAt, guestName, guestPhone, couponCode: couponCode || undefined }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['availability', id, date] })
       queryClient.invalidateQueries({ queryKey: ['reservations'] })
@@ -187,6 +190,21 @@ export default function BookingPage() {
               </div>
             </div>
           )}
+
+          {/* 쿠폰 */}
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <label className="text-sm">
+              <span className="mb-1.5 block font-medium text-slate-600">쿠폰 코드 <span className="text-slate-300">(선택)</span></span>
+              <input
+                value={couponCode}
+                onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                placeholder="WELCOME10"
+                className={inputCls}
+              />
+            </label>
+            {couponApplied && <p className="mt-2 text-sm font-medium text-emerald-600">쿠폰이 적용됐어요 🎉</p>}
+            {couponInvalid && <p className="mt-2 text-sm text-rose-500">유효하지 않은 쿠폰이에요.</p>}
+          </div>
 
           {/* 예약자 정보 */}
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">

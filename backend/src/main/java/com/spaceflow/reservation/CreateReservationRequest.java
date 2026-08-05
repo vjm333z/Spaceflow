@@ -14,6 +14,7 @@ public record CreateReservationRequest(
         @NotNull OffsetDateTime startAt,
         @NotNull OffsetDateTime endAt,
         @NotBlank String guestName,
-        String guestPhone
+        String guestPhone,
+        String couponCode
 ) {
 }

@@ -79,8 +79,8 @@ public class ReservationService {
         if (reservationRepository.existsOverlapping(req.roomId(), req.startAt(), req.endAt())) {
             throw new IllegalStateException("이미 예약된 시간대입니다.");
         }
-        // 예약 확정 시점의 요금을 계산해 스냅샷으로 저장한다
-        BigDecimal price = pricingService.quote(req.roomId(), req.startAt(), req.endAt()).total();
+        // 예약 확정 시점의 요금을 계산해 스냅샷으로 저장한다 (쿠폰 반영)
+        BigDecimal price = pricingService.quote(req.roomId(), req.startAt(), req.endAt(), req.couponCode()).total();
         try {
             // 2) 저장 — 사전확인을 뚫은 찰나의 동시 요청은 DB EXCLUDE 제약이 막는다 (정합성)
             Reservation saved = reservationRepository.save(

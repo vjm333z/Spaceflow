@@ -26,7 +26,8 @@ public class PricingController {
     public PriceQuote quote(
             @PathVariable Long roomId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime start,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime end) {
-        return pricingService.quote(roomId, start, end);
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime end,
+            @RequestParam(required = false) String coupon) {
+        return pricingService.quote(roomId, start, end, coupon);
     }
 }

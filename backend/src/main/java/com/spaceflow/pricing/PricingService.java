@@ -28,9 +28,15 @@ public class PricingService {
 
     private final RoomRepository roomRepository;
     private final PricingRuleRepository pricingRuleRepository;
+    private final CouponRepository couponRepository;
 
     @Transactional(readOnly = true)
     public PriceQuote quote(Long roomId, OffsetDateTime startAt, OffsetDateTime endAt) {
+        return quote(roomId, startAt, endAt, null);
+    }
+
+    @Transactional(readOnly = true)
+    public PriceQuote quote(Long roomId, OffsetDateTime startAt, OffsetDateTime endAt, String couponCode) {
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new IllegalArgumentException("방을 찾을 수 없습니다: " + roomId));
         if (!endAt.isAfter(startAt)) {
@@ -53,6 +59,16 @@ public class PricingService {
                 BigDecimal delta = rule.adjustmentOn(running);
                 running = running.add(delta);
                 lines.add(new PriceQuote.PriceLine(rule.label(), delta));
+            }
+        }
+
+        // 쿠폰 할인 — 규칙 적용 후 최종 금액에 적용
+        if (couponCode != null && !couponCode.isBlank()) {
+            Coupon coupon = couponRepository.findByCodeIgnoreCaseAndActiveTrue(couponCode.trim()).orElse(null);
+            if (coupon != null) {
+                BigDecimal discount = coupon.discountOn(running).negate();
+                running = running.add(discount);
+                lines.add(new PriceQuote.PriceLine(coupon.label(), discount.setScale(2, RoundingMode.HALF_UP)));
             }
         }
 

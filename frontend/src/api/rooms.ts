@@ -20,9 +20,9 @@ export async function getAvailability(roomId: number, date: string): Promise<Boo
 }
 
 // axios가 params의 '+09:00'을 %2B로 인코딩해주므로 시각을 그대로 넘기면 된다.
-export async function getQuote(roomId: number, start: string, end: string): Promise<PriceQuote> {
+export async function getQuote(roomId: number, start: string, end: string, coupon?: string): Promise<PriceQuote> {
   const { data } = await api.get<PriceQuote>(`/rooms/${roomId}/quote`, {
-    params: { start, end },
+    params: { start, end, ...(coupon ? { coupon } : {}) },
   })
   return data
 }

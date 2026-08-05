@@ -7,6 +7,7 @@ export interface CreateReservationPayload {
   endAt: string
   guestName: string
   guestPhone?: string
+  couponCode?: string
 }
 
 export async function createReservation(payload: CreateReservationPayload): Promise<Reservation> {
