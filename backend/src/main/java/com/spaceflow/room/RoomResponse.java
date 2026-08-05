@@ -9,7 +9,7 @@ public record RoomResponse(
         int capacity,
         BigDecimal basePricePerHour
 ) {
-    static RoomResponse from(Room room) {
+    public static RoomResponse from(Room room) {
         return new RoomResponse(room.getId(), room.getName(), room.getCapacity(), room.getBasePricePerHour());
     }
 }

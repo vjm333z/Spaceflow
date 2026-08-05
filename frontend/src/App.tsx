@@ -6,6 +6,7 @@ import LoginPage from './pages/LoginPage'
 import SignupPage from './pages/SignupPage'
 import OwnerDashboardPage from './pages/OwnerDashboardPage'
 import MyReservationsPage from './pages/MyReservationsPage'
+import OwnerRoomsPage from './pages/OwnerRoomsPage'
 
 // Layout(공통 헤더) 아래에 각 페이지를 중첩 배치한다.
 const router = createBrowserRouter([
@@ -17,6 +18,7 @@ const router = createBrowserRouter([
       { path: '/login', element: <LoginPage /> },
       { path: '/signup', element: <SignupPage /> },
       { path: '/owner', element: <OwnerDashboardPage /> },
+      { path: '/owner/rooms', element: <OwnerRoomsPage /> },
       { path: '/my', element: <MyReservationsPage /> },
     ],
   },

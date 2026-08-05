@@ -45,8 +45,15 @@ export default function OwnerDashboardPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-10">
-      <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">사장님 대시보드</h1>
-      <p className="mt-0.5 text-sm text-slate-400">우리 매장 예약 현황이에요.</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">사장님 대시보드</h1>
+          <p className="mt-0.5 text-sm text-slate-400">우리 매장 예약 현황이에요.</p>
+        </div>
+        <Link to="/owner/rooms" className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-indigo-300 hover:text-indigo-600">
+          방 관리
+        </Link>
+      </div>
 
       {/* 통계 카드 */}
       <div className="mt-6 grid grid-cols-2 gap-4">

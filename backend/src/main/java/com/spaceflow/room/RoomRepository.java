@@ -22,6 +22,10 @@ public interface RoomRepository extends JpaRepository<Room, Long> {
     @Query("select r from Room r where r.id = :id")
     Optional<Room> findByIdForUpdate(@Param("id") Long id);
 
+    // 사장 관리: 내 테넌트의 방 목록
+    @Query("select r from Room r where r.space.tenant.id = :tenantId order by r.id")
+    java.util.List<Room> findByTenantId(@Param("tenantId") Long tenantId);
+
     /**
      * 방을 낙관적 락으로 조회하되, 커밋 시 version을 강제로 +1 한다(OPTIMISTIC_FORCE_INCREMENT).
      * 같은 방을 동시에 예약하면 커밋 시점에 version 충돌이 나 진 쪽이 롤백된다.

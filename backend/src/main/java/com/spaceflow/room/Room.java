@@ -55,4 +55,16 @@ public class Room extends BaseTimeEntity {
         this.capacity = capacity;
         this.basePricePerHour = basePricePerHour;
     }
+
+    // 사장이 방 정보를 수정
+    public void update(String name, int capacity, BigDecimal basePricePerHour) {
+        this.name = name;
+        this.capacity = capacity;
+        this.basePricePerHour = basePricePerHour;
+    }
+
+    // 이 방이 특정 테넌트 소유인지 (멀티테넌시 권한 검사)
+    public boolean belongsToTenant(Long tenantId) {
+        return getSpace().getTenant().getId().equals(tenantId);
+    }
 }
